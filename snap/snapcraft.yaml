@@ -1,0 +1,53 @@
+name: bazel
+base: core26
+adopt-info: bazel
+summary: Build and test software of any size, quickly and reliably
+description: |
+  Bazel builds and tests software. This snap provides the Bazel 7 series,
+  built from the source distribution on amd64, arm64 and riscv64.
+
+  The snap is classic, so builds use the compilers and tools of the host.
+  Install a C++ compiler (for example build-essential) and zip and unzip
+  on the host.
+grade: devel
+confinement: classic
+platforms:
+  amd64:
+  arm64:
+  riscv64:
+
+parts:
+  bazel:
+    plugin: nil
+    source: patches
+    source-type: local
+    build-packages:
+      - build-essential
+      - curl
+      - openjdk-21-jdk-headless
+      - patch
+      - python3
+      - unzip
+      - zip
+    stage-packages:
+      - openjdk-21-jdk-headless
+    override-build: |
+      VERSION=7.7.2
+      SUM=f40c88b52da292746b6ccf742a0e3f0897a7e4ac24d0143b860f1857f220d5ec
+      mkdir -p "$CRAFT_PART_BUILD/scripts" "$CRAFT_PART_BUILD/patches"
+      cp "$CRAFT_PROJECT_DIR/scripts/bootstrap.sh" "$CRAFT_PART_BUILD/scripts/"
+      cp "$CRAFT_PROJECT_DIR"/patches/* "$CRAFT_PART_BUILD/patches/"
+      cd "$CRAFT_PART_BUILD"
+      curl -fsSL -o "bazel-$VERSION-dist.zip" \
+        "https://github.com/bazelbuild/bazel/releases/download/$VERSION/bazel-$VERSION-dist.zip"
+      echo "$SUM  bazel-$VERSION-dist.zip" | sha256sum -c -
+      DIST_ZIP="$PWD/bazel-$VERSION-dist.zip" \
+        bash scripts/bootstrap.sh "$VERSION" "$PWD/work"
+      install -D work/src/output/bazel "$CRAFT_PART_INSTALL/bin/bazel-real"
+      install -D -m 755 "$CRAFT_PROJECT_DIR/snap/local/bazel" \
+        "$CRAFT_PART_INSTALL/bin/bazel"
+      craftctl set version="$VERSION"
+
+apps:
+  bazel:
+    command: bin/bazel

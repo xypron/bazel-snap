@@ -1,6 +1,8 @@
 name: bazel
+title: Bazel
 base: core26
 adopt-info: bazel
+license: Apache-2.0
 summary: Build and test software of any size, quickly and reliably
 description: |
   Bazel builds and tests software. This snap provides the Bazel 7 series,
@@ -46,6 +48,29 @@ parts:
       install -D work/src/output/bazel "$CRAFT_PART_INSTALL/bin/bazel-real"
       install -D -m 755 "$CRAFT_PROJECT_DIR/snap/local/bazel" \
         "$CRAFT_PART_INSTALL/bin/bazel"
+      # Apache-2.0 requires that the license text is distributed with the
+      # binary. Ship the license and notice files of Bazel, of its
+      # third_party directories and of the Maven jars that are bundled.
+      SRC="$PWD/work/src"
+      LICDIR="$CRAFT_PART_INSTALL/usr/share/doc/bazel"
+      install -D -m 644 "$SRC/LICENSE" "$LICDIR/LICENSE"
+      (
+        cd "$SRC"
+        find third_party -type f \( -iname 'LICENSE*' -o -iname 'NOTICE*' \
+          -o -name 'Copyright.txt' \) ! -path 'third_party/py/*' |
+          while read -r f; do
+            install -D -m 644 "$f" "$LICDIR/$f"
+          done
+        find derived -type f -name '*.jar' ! -name '*-sources.jar' |
+          while read -r jar; do
+            dest="$LICDIR/jars/$(basename "$jar" .jar)"
+            mkdir -p "$dest"
+            unzip -q -C -o -d "$dest" "$jar" 'META-INF/LICENSE*' \
+              'META-INF/NOTICE*' 'META-INF/license/*' \
+              'META-INF/licenses/*' </dev/null || true
+          done
+      )
+      find "$LICDIR" -type d -empty -delete
       craftctl set version="$VERSION"
 
 apps:
